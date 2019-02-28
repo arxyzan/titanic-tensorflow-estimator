@@ -7,36 +7,49 @@ import matplotlib.pyplot as plt
 
 from titanic_estimator import *
 
-# read data from csv file
-data = pd.read_csv('train.csv')
 
-# add family column
-for i in range(data.shape[0]):
-    data.at[i, 'Family'] = data.at[i, 'Name'].split(', ')[0]
 
-# add deck feature
-for i in range(data.shape[0]):
-    if pd.isnull(data.at[i, 'Cabin']):
-        data.at[i, 'Deck'] = 'U'
+def clean_data(data_path, train_data=True):
+    data = pd.read_csv(data_path)
+
+    # add family column
+    for i in range(data.shape[0]):
+        data.at[i, 'Family'] = data.at[i, 'Name'].split(', ')[0]
+
+    #add deck feature
+    for i in range(data.shape[0]):
+        if pd.isnull(data.at[i, 'Cabin']):
+            data.at[i, 'Deck'] = 'U'
+        else:
+            data.at[i, 'Deck'] = list(data.at[i, 'Cabin'])[0]
+    #fill missing values in age column
+    data['Age'] = data['Age'].fillna(data['Age'].mean())
+    data.fillna('', inplace=True)
+    #add family members feature
+    data['FamilyMembers'] = data.groupby('Family')['Family'].transform('count')
+    #data['PassengerId'] = data['PassengerId'].astype('str')
+    if train_data:
+        data = data[['PassengerId', 'Family', 'Pclass',
+                     'Sex', 'Age', 'FamilyMembers',
+                     'Deck', 'Embarked', 'Survived']]
     else:
-        data.at[i, 'Deck'] = list(data.at[i, 'Cabin'])[0]
+        data = data[['PassengerId', 'Family', 'Pclass',
+                     'Sex', 'Age', 'FamilyMembers', 'Embarked',
+                     'Deck']]
+    return data
 
+# read data from csv file
 
-# add family members feature
-data['FamilyMembers'] = data.groupby('Family')['Family'].transform('count')
-data = data[['PassengerId', 'Family', 'Pclass',
-             'Sex', 'Age', 'FamilyMembers',
-             'Deck', 'Survived']]
-
-
-# split data features from labels
-train_df = data.sample(frac=0.9, random_state=0)
+data = clean_data('train.csv')
+train_df = data.sample(frac=0.9,random_state=0)
 test_df = data.drop(train_df.index)
-
-train_y = train_df.pop('Survived')
-test_y = test_df.pop('Survived')
+train_labels = train_df.pop('Survived')
+test_labels = test_df.pop('Survived')
+train_y = train_labels
+test_y = test_labels
 train_x = train_df
 test_x = test_df
+
 
 # train classifier
 classifier.train(
